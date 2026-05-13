@@ -4,7 +4,6 @@ const ACTIONS = ["P", "F", "T", "R"];
 const TABLES = [1, 2, 3, 5, 6, 7, 8, 9, 10];
 const START_NUMBERS = [1, 36, 71, 106, 141, 176, 211];
 const ROWS_PER_TABLE = 35;
-const TABLE_BLOCKS = 3;
 
 function createRows() {
   return Array.from({ length: ROWS_PER_TABLE }, () => ({
@@ -14,10 +13,10 @@ function createRows() {
   }));
 }
 
-function createInitialBlocks() {
-  return Array.from({ length: TABLE_BLOCKS }, (_, i) => ({
-    tableNumber: TABLES[i],
-    startNumber: START_NUMBERS[i],
+function createInitialBlocks(count) {
+  return Array.from({ length: count }, (_, i) => ({
+    tableNumber: TABLES[i] || TABLES[0],
+    startNumber: START_NUMBERS[i] || START_NUMBERS[0],
     rows: createRows(),
   }));
 }
@@ -34,6 +33,7 @@ function cellStyle(value) {
       background: "#6bcf43",
       color: "black",
       borderColor: "#4d9d2f",
+      WebkitTextFillColor: "black",
     };
   }
 
@@ -42,6 +42,7 @@ function cellStyle(value) {
       background: "#ef4444",
       color: "white",
       borderColor: "#b91c1c",
+      WebkitTextFillColor: "white",
     };
   }
 
@@ -49,11 +50,38 @@ function cellStyle(value) {
     background: "white",
     color: "black",
     borderColor: "#cbd5e1",
+    WebkitTextFillColor: "black",
   };
 }
 
 export default function App() {
-  const [blocks, setBlocks] = useState(createInitialBlocks);
+  const [tableCount, setTableCount] = useState(3);
+  const [blocks, setBlocks] = useState(() => createInitialBlocks(3));
+
+  const changeTableCount = (newCount) => {
+    setTableCount(newCount);
+
+    setBlocks((current) => {
+      if (newCount > current.length) {
+        const extra = Array.from(
+          { length: newCount - current.length },
+          (_, i) => {
+            const index = current.length + i;
+
+            return {
+              tableNumber: TABLES[index] || TABLES[0],
+              startNumber: START_NUMBERS[index] || START_NUMBERS[0],
+              rows: createRows(),
+            };
+          }
+        );
+
+        return [...current, ...extra];
+      }
+
+      return current.slice(0, newCount);
+    });
+  };
 
   const updateAction = (blockIndex, rowIndex, action) => {
     setBlocks((current) =>
@@ -130,7 +158,7 @@ export default function App() {
   };
 
   const resetAll = () => {
-    setBlocks(createInitialBlocks());
+    setBlocks(createInitialBlocks(tableCount));
   };
 
   return (
@@ -149,103 +177,127 @@ export default function App() {
           </button>
         </div>
 
-        <div style={styles.legend}>
-          1 tap = green • 2 taps = red • 3 taps = clear
+        <div style={styles.topBar}>
+          <div style={styles.explanation}>
+            1 tap = green • 2 taps = red • 3 taps = clear
+          </div>
+
+          <label style={styles.tableCountLabel}>
+            TABLE COLUMNS
+            <select
+              value={tableCount}
+              onChange={(e) => changeTableCount(Number(e.target.value))}
+              style={styles.tableCountSelect}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
-        <div style={styles.grid}>
-          {blocks.map((block, blockIndex) => (
-            <div key={blockIndex} style={styles.block}>
-              <div style={styles.topControls}>
-                <div>
-                  <div style={styles.controlLabel}>TABLE #</div>
-
-                  <select
-                    value={block.tableNumber}
-                    onChange={(e) =>
-                      updateTableNumber(blockIndex, Number(e.target.value))
-                    }
-                    style={styles.select}
-                  >
-                    {TABLES.map((table) => (
-                      <option key={table} value={table}>
-                        {table}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div style={styles.controlLabel}>START #</div>
-
-                  <select
-                    value={block.startNumber}
-                    onChange={(e) =>
-                      updateStartNumber(blockIndex, Number(e.target.value))
-                    }
-                    style={styles.select}
-                  >
-                    {START_NUMBERS.map((number) => (
-                      <option key={number} value={number}>
-                        {number}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={styles.tableTitle}>TABLE #{block.tableNumber}</div>
-
-              {block.rows.map((row, rowIndex) => {
-                const rowNumber = block.startNumber + rowIndex;
-
-                return (
-                  <div key={rowIndex} style={styles.row}>
-                    <button
-                      onClick={() => updateNumber(blockIndex, rowIndex)}
-                      style={{
-                        ...styles.cell,
-                        ...cellStyle(row.numberState),
-                      }}
-                    >
-                      {rowNumber}
-                    </button>
+        <div style={styles.scrollArea}>
+          <div
+            style={{
+              ...styles.grid,
+              gridTemplateColumns: `repeat(${tableCount}, 360px)`,
+            }}
+          >
+            {blocks.map((block, blockIndex) => (
+              <div key={blockIndex} style={styles.block}>
+                <div style={styles.topControls}>
+                  <div>
+                    <div style={styles.controlLabel}>TABLE #</div>
 
                     <select
-                      value={row.bt}
+                      value={block.tableNumber}
                       onChange={(e) =>
-                        updateBT(blockIndex, rowIndex, e.target.value)
+                        updateTableNumber(blockIndex, Number(e.target.value))
                       }
-                      style={styles.btSelect}
+                      style={styles.select}
                     >
-                      <option value="">-</option>
-
                       {TABLES.map((table) => (
                         <option key={table} value={table}>
                           {table}
                         </option>
                       ))}
                     </select>
+                  </div>
 
-                    {ACTIONS.map((action) => (
+                  <div>
+                    <div style={styles.controlLabel}>START #</div>
+
+                    <select
+                      value={block.startNumber}
+                      onChange={(e) =>
+                        updateStartNumber(blockIndex, Number(e.target.value))
+                      }
+                      style={styles.select}
+                    >
+                      {START_NUMBERS.map((number) => (
+                        <option key={number} value={number}>
+                          {number}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={styles.tableTitle}>TABLE #{block.tableNumber}</div>
+
+                {block.rows.map((row, rowIndex) => {
+                  const rowNumber = block.startNumber + rowIndex;
+
+                  return (
+                    <div key={rowIndex} style={styles.row}>
                       <button
-                        key={action}
-                        onClick={() =>
-                          updateAction(blockIndex, rowIndex, action)
-                        }
+                        onClick={() => updateNumber(blockIndex, rowIndex)}
                         style={{
                           ...styles.cell,
-                          ...cellStyle(row.actions[action]),
+                          ...cellStyle(row.numberState),
                         }}
                       >
-                        {action}
+                        {rowNumber}
                       </button>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+
+                      <select
+                        value={row.bt}
+                        onChange={(e) =>
+                          updateBT(blockIndex, rowIndex, e.target.value)
+                        }
+                        style={styles.btSelect}
+                      >
+                        <option value="">-</option>
+
+                        {TABLES.map((table) => (
+                          <option key={table} value={table}>
+                            {table}
+                          </option>
+                        ))}
+                      </select>
+
+                      {ACTIONS.map((action) => (
+                        <button
+                          key={action}
+                          onClick={() =>
+                            updateAction(blockIndex, rowIndex, action)
+                          }
+                          style={{
+                            ...styles.cell,
+                            ...cellStyle(row.actions[action]),
+                          }}
+                        >
+                          {action}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -303,21 +355,57 @@ const styles = {
     WebkitTextFillColor: "white",
   },
 
-  legend: {
+  topBar: {
+    display: "grid",
+    gridTemplateColumns: "1fr 170px",
+    gap: 10,
+    marginBottom: 10,
+    alignItems: "stretch",
+  },
+
+  explanation: {
     border: "2px solid #666",
     borderRadius: 10,
     textAlign: "center",
     padding: 10,
-    marginBottom: 10,
     background: "white",
     color: "black",
     fontWeight: 700,
   },
 
+  tableCountLabel: {
+    border: "2px solid #666",
+    borderRadius: 10,
+    background: "white",
+    color: "black",
+    fontWeight: 900,
+    fontSize: 12,
+    padding: 6,
+    textAlign: "center",
+  },
+
+  tableCountSelect: {
+    width: "100%",
+    marginTop: 4,
+    padding: 6,
+    borderRadius: 8,
+    border: "1px solid #bbb",
+    background: "white",
+    color: "black",
+    WebkitTextFillColor: "black",
+    fontWeight: 900,
+    fontSize: 16,
+  },
+
+  scrollArea: {
+    overflowX: "auto",
+    paddingBottom: 10,
+  },
+
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
+    minWidth: "max-content",
   },
 
   block: {
@@ -352,7 +440,6 @@ const styles = {
     background: "white",
     color: "black",
     WebkitTextFillColor: "black",
-    appearance: "auto",
   },
 
   tableTitle: {
@@ -396,6 +483,5 @@ const styles = {
     fontSize: 16,
     textAlign: "center",
     cursor: "pointer",
-    appearance: "auto",
   },
 };
