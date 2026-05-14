@@ -8,8 +8,7 @@ const TABLES = [1, 2, 3, 5, 6, 7, 8, 9, 10];
 const START_NUMBERS = [1, 36, 71, 106, 141, 176, 211];
 const ROWS_PER_TABLE = 35;
 const TABLE_BLOCKS = 3;
-
-const STORAGE_KEY = "soft-h4h-saved-data";
+const STORAGE_KEY = "soft-h4h-current-version-2";
 
 function createRows() {
   return Array.from({ length: ROWS_PER_TABLE }, () => ({
@@ -45,27 +44,9 @@ function nextCellState(value) {
 }
 
 function cellStyle(value) {
-  if (value === 1) {
-    return {
-      background: "#22c55e",
-      color: "white",
-      borderColor: "#15803d",
-    };
-  }
-
-  if (value === 2) {
-    return {
-      background: "#ef4444",
-      color: "white",
-      borderColor: "#b91c1c",
-    };
-  }
-
-  return {
-    background: "white",
-    color: "#111827",
-    borderColor: "#cbd5e1",
-  };
+  if (value === 1) return { background: "#22c55e", color: "white", borderColor: "#15803d" };
+  if (value === 2) return { background: "#ef4444", color: "white", borderColor: "#b91c1c" };
+  return { background: "white", color: "#111827", borderColor: "#cbd5e1" };
 }
 
 export default function App() {
@@ -95,7 +76,6 @@ export default function App() {
     setBlocks((current) =>
       current.map((block, i) => {
         if (i !== blockIndex) return block;
-
         return {
           ...block,
           rows: block.rows.map((row, r) =>
@@ -110,12 +90,10 @@ export default function App() {
     setBlocks((current) =>
       current.map((block, i) => {
         if (i !== blockIndex) return block;
-
         return {
           ...block,
           rows: block.rows.map((row, r) => {
             if (r !== rowIndex) return row;
-
             return {
               ...row,
               actions: {
@@ -133,7 +111,6 @@ export default function App() {
     setBlocks((current) =>
       current.map((block, i) => {
         if (i !== blockIndex) return block;
-
         return {
           ...block,
           rows: block.rows.map((row, r) =>
@@ -148,13 +125,11 @@ export default function App() {
 
   const resetAll = () => {
     localStorage.removeItem(STORAGE_KEY);
-
-    setBlocks(
-      current =>
-        current.map((block) => ({
-          ...block,
-          rows: createRows(),
-        }))
+    setBlocks((current) =>
+      current.map((block) => ({
+        ...block,
+        rows: createRows(),
+      }))
     );
   };
 
@@ -203,11 +178,7 @@ function TableBlock({
   updateAction,
 }) {
   const rowNumbers = useMemo(
-    () =>
-      Array.from(
-        { length: ROWS_PER_TABLE },
-        (_, i) => block.startNumber + i
-      ),
+    () => Array.from({ length: ROWS_PER_TABLE }, (_, i) => block.startNumber + i),
     [block.startNumber]
   );
 
@@ -218,15 +189,11 @@ function TableBlock({
           TABLE #
           <select
             value={block.tableNumber}
-            onChange={(e) =>
-              updateTableNumber(blockIndex, Number(e.target.value))
-            }
+            onChange={(e) => updateTableNumber(blockIndex, Number(e.target.value))}
             style={styles.select}
           >
             {TABLES.map((table) => (
-              <option key={table} value={table}>
-                {table}
-              </option>
+              <option key={table} value={table}>{table}</option>
             ))}
           </select>
         </label>
@@ -235,50 +202,36 @@ function TableBlock({
           START #
           <select
             value={block.startNumber}
-            onChange={(e) =>
-              updateStartNumber(blockIndex, Number(e.target.value))
-            }
+            onChange={(e) => updateStartNumber(blockIndex, Number(e.target.value))}
             style={styles.select}
           >
             {START_NUMBERS.map((number) => (
-              <option key={number} value={number}>
-                {number}
-              </option>
+              <option key={number} value={number}>{number}</option>
             ))}
           </select>
         </label>
       </div>
 
-      <div style={styles.tableTitle}>
-        TABLE #{block.tableNumber}
-      </div>
+      <div style={styles.tableTitle}>TABLE #{block.tableNumber}</div>
 
       {block.rows.map((row, rowIndex) => (
         <div key={rowIndex} style={styles.row}>
           <button
             type="button"
             onClick={() => updateNumber(blockIndex, rowIndex)}
-            style={{
-              ...styles.cellButton,
-              ...cellStyle(row.numberState),
-            }}
+            style={{ ...styles.cellButton, ...cellStyle(row.numberState) }}
           >
             {rowNumbers[rowIndex]}
           </button>
 
           <select
             value={row.bt}
-            onChange={(e) =>
-              updateBT(blockIndex, rowIndex, e.target.value)
-            }
+            onChange={(e) => updateBT(blockIndex, rowIndex, e.target.value)}
             style={styles.btSelect}
           >
             <option value="">-</option>
-
             {TABLES.map((table) => (
-              <option key={table} value={table}>
-                {table}
-              </option>
+              <option key={table} value={table}>{table}</option>
             ))}
           </select>
 
@@ -286,13 +239,8 @@ function TableBlock({
             <button
               type="button"
               key={action}
-              onClick={() =>
-                updateAction(blockIndex, rowIndex, action)
-              }
-              style={{
-                ...styles.cellButton,
-                ...cellStyle(row.actions[action]),
-              }}
+              onClick={() => updateAction(blockIndex, rowIndex, action)}
+              style={{ ...styles.cellButton, ...cellStyle(row.actions[action]) }}
             >
               {action}
             </button>
@@ -310,9 +258,11 @@ const styles = {
     padding: 8,
     boxSizing: "border-box",
     fontFamily: "Arial, Helvetica, sans-serif",
+    overflowX: "auto",
   },
 
   app: {
+    minWidth: 1100,
     maxWidth: 1180,
     margin: "0 auto",
     background: "white",
@@ -339,6 +289,7 @@ const styles = {
     fontSize: 26,
     fontWeight: 900,
     lineHeight: 1,
+    color: "#000",
   },
 
   resetButton: {
@@ -376,6 +327,7 @@ const styles = {
   label: {
     fontSize: 10,
     fontWeight: 900,
+    color: "#000",
   },
 
   select: {
@@ -387,6 +339,8 @@ const styles = {
     borderRadius: 7,
     border: "1px solid #94a3b8",
     background: "white",
+    color: "#000",
+    WebkitTextFillColor: "#000",
   },
 
   tableTitle: {
@@ -400,7 +354,7 @@ const styles = {
 
   row: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
+    gridTemplateColumns: "42px 46px 1fr 1fr 1fr 1fr",
     gap: 2,
     padding: "2px",
     background: "#cbd5e1",
@@ -414,6 +368,8 @@ const styles = {
     fontWeight: 900,
     padding: 0,
     cursor: "pointer",
+    color: "#000",
+    WebkitTextFillColor: "inherit",
   },
 
   btSelect: {
@@ -424,7 +380,8 @@ const styles = {
     fontWeight: 900,
     padding: 0,
     background: "#fef3c7",
-    color: "#111827",
+    color: "#000",
+    WebkitTextFillColor: "#000",
     textAlign: "center",
     cursor: "pointer",
   },
