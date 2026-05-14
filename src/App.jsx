@@ -1,9 +1,15 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+const LOGO =
+  "data:image/png;base64,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";
 
 const ACTIONS = ["P", "F", "T", "R"];
 const TABLES = [1, 2, 3, 5, 6, 7, 8, 9, 10];
 const START_NUMBERS = [1, 36, 71, 106, 141, 176, 211];
 const ROWS_PER_TABLE = 35;
+const TABLE_BLOCKS = 3;
+
+const STORAGE_KEY = "soft-h4h-saved-data";
 
 function createRows() {
   return Array.from({ length: ROWS_PER_TABLE }, () => ({
@@ -13,12 +19,23 @@ function createRows() {
   }));
 }
 
-function createInitialBlocks(count) {
-  return Array.from({ length: count }, (_, i) => ({
-    tableNumber: TABLES[i] || TABLES[0],
-    startNumber: START_NUMBERS[i] || START_NUMBERS[0],
+function createInitialBlocks() {
+  return Array.from({ length: TABLE_BLOCKS }, (_, i) => ({
+    tableNumber: TABLES[i],
+    startNumber: 36,
     rows: createRows(),
   }));
+}
+
+function loadSavedBlocks() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (error) {
+    console.log("Could not load saved data", error);
+  }
+
+  return createInitialBlocks();
 }
 
 function nextCellState(value) {
@@ -30,10 +47,9 @@ function nextCellState(value) {
 function cellStyle(value) {
   if (value === 1) {
     return {
-      background: "#6bcf43",
-      color: "black",
-      borderColor: "#4d9d2f",
-      WebkitTextFillColor: "black",
+      background: "#22c55e",
+      color: "white",
+      borderColor: "#15803d",
     };
   }
 
@@ -42,45 +58,52 @@ function cellStyle(value) {
       background: "#ef4444",
       color: "white",
       borderColor: "#b91c1c",
-      WebkitTextFillColor: "white",
     };
   }
 
   return {
     background: "white",
-    color: "black",
+    color: "#111827",
     borderColor: "#cbd5e1",
-    WebkitTextFillColor: "black",
   };
 }
 
 export default function App() {
-  const [tableCount, setTableCount] = useState(3);
-  const [blocks, setBlocks] = useState(() => createInitialBlocks(3));
+  const [blocks, setBlocks] = useState(loadSavedBlocks);
 
-  const changeTableCount = (newCount) => {
-    setTableCount(newCount);
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
+  }, [blocks]);
 
-    setBlocks((current) => {
-      if (newCount > current.length) {
-        const extra = Array.from(
-          { length: newCount - current.length },
-          (_, i) => {
-            const index = current.length + i;
+  const updateTableNumber = (blockIndex, value) => {
+    setBlocks((current) =>
+      current.map((block, i) =>
+        i === blockIndex ? { ...block, tableNumber: value } : block
+      )
+    );
+  };
 
-            return {
-              tableNumber: TABLES[index] || TABLES[0],
-              startNumber: START_NUMBERS[index] || START_NUMBERS[0],
-              rows: createRows(),
-            };
-          }
-        );
+  const updateStartNumber = (blockIndex, value) => {
+    setBlocks((current) =>
+      current.map((block, i) =>
+        i === blockIndex ? { ...block, startNumber: value } : block
+      )
+    );
+  };
 
-        return [...current, ...extra];
-      }
+  const updateBT = (blockIndex, rowIndex, value) => {
+    setBlocks((current) =>
+      current.map((block, i) => {
+        if (i !== blockIndex) return block;
 
-      return current.slice(0, newCount);
-    });
+        return {
+          ...block,
+          rows: block.rows.map((row, r) =>
+            r === rowIndex ? { ...row, bt: value } : row
+          ),
+        };
+      })
+    );
   };
 
   const updateAction = (blockIndex, rowIndex, action) => {
@@ -115,10 +138,7 @@ export default function App() {
           ...block,
           rows: block.rows.map((row, r) =>
             r === rowIndex
-              ? {
-                  ...row,
-                  numberState: nextCellState(row.numberState),
-                }
+              ? { ...row, numberState: nextCellState(row.numberState) }
               : row
           ),
         };
@@ -126,361 +146,285 @@ export default function App() {
     );
   };
 
-  const updateBT = (blockIndex, rowIndex, value) => {
-    setBlocks((current) =>
-      current.map((block, i) => {
-        if (i !== blockIndex) return block;
-
-        return {
-          ...block,
-          rows: block.rows.map((row, r) =>
-            r === rowIndex ? { ...row, bt: value } : row
-          ),
-        };
-      })
-    );
-  };
-
-  const updateTableNumber = (blockIndex, value) => {
-    setBlocks((current) =>
-      current.map((block, i) =>
-        i === blockIndex ? { ...block, tableNumber: value } : block
-      )
-    );
-  };
-
-  const updateStartNumber = (blockIndex, value) => {
-    setBlocks((current) =>
-      current.map((block, i) =>
-        i === blockIndex ? { ...block, startNumber: value } : block
-      )
-    );
-  };
-
   const resetAll = () => {
-    setBlocks(createInitialBlocks(tableCount));
+    localStorage.removeItem(STORAGE_KEY);
+
+    setBlocks(
+      current =>
+        current.map((block) => ({
+          ...block,
+          rows: createRows(),
+        }))
+    );
   };
 
   return (
     <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.header}>
+      <div style={styles.app}>
+        <header style={styles.header}>
           <div style={{ width: 120 }} />
 
-          <div style={styles.logoBox}>
-            <div style={styles.logoText}>TRITON POKER SERIES</div>
-            <div style={styles.title}>SOFT H4H</div>
+          <div style={{ textAlign: "center" }}>
+            <img src={LOGO} alt="Triton Poker" style={styles.logo} />
+            <h1 style={styles.title}>SOFT H4H</h1>
           </div>
 
           <button onClick={resetAll} style={styles.resetButton}>
             RESET
           </button>
-        </div>
+        </header>
 
-        <div style={styles.topBar}>
-          <div style={styles.explanation}>
-            1 tap = green • 2 taps = red • 3 taps = clear
-          </div>
-
-          <label style={styles.tableCountLabel}>
-            TABLE COLUMNS
-            <select
-              value={tableCount}
-              onChange={(e) => changeTableCount(Number(e.target.value))}
-              style={styles.tableCountSelect}
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
-                <option key={count} value={count}>
-                  {count}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div style={styles.scrollArea}>
-          <div
-            style={{
-              ...styles.grid,
-              gridTemplateColumns: `repeat(${tableCount}, 360px)`,
-            }}
-          >
-            {blocks.map((block, blockIndex) => (
-              <div key={blockIndex} style={styles.block}>
-                <div style={styles.topControls}>
-                  <div>
-                    <div style={styles.controlLabel}>TABLE #</div>
-
-                    <select
-                      value={block.tableNumber}
-                      onChange={(e) =>
-                        updateTableNumber(blockIndex, Number(e.target.value))
-                      }
-                      style={styles.select}
-                    >
-                      {TABLES.map((table) => (
-                        <option key={table} value={table}>
-                          {table}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={styles.controlLabel}>START #</div>
-
-                    <select
-                      value={block.startNumber}
-                      onChange={(e) =>
-                        updateStartNumber(blockIndex, Number(e.target.value))
-                      }
-                      style={styles.select}
-                    >
-                      {START_NUMBERS.map((number) => (
-                        <option key={number} value={number}>
-                          {number}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={styles.tableTitle}>TABLE #{block.tableNumber}</div>
-
-                {block.rows.map((row, rowIndex) => {
-                  const rowNumber = block.startNumber + rowIndex;
-
-                  return (
-                    <div key={rowIndex} style={styles.row}>
-                      <button
-                        onClick={() => updateNumber(blockIndex, rowIndex)}
-                        style={{
-                          ...styles.cell,
-                          ...cellStyle(row.numberState),
-                        }}
-                      >
-                        {rowNumber}
-                      </button>
-
-                      <select
-                        value={row.bt}
-                        onChange={(e) =>
-                          updateBT(blockIndex, rowIndex, e.target.value)
-                        }
-                        style={styles.btSelect}
-                      >
-                        <option value="">-</option>
-
-                        {TABLES.map((table) => (
-                          <option key={table} value={table}>
-                            {table}
-                          </option>
-                        ))}
-                      </select>
-
-                      {ACTIONS.map((action) => (
-                        <button
-                          key={action}
-                          onClick={() =>
-                            updateAction(blockIndex, rowIndex, action)
-                          }
-                          style={{
-                            ...styles.cell,
-                            ...cellStyle(row.actions[action]),
-                          }}
-                        >
-                          {action}
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
+        <main style={styles.tableGrid}>
+          {blocks.map((block, blockIndex) => (
+            <TableBlock
+              key={blockIndex}
+              block={block}
+              blockIndex={blockIndex}
+              updateTableNumber={updateTableNumber}
+              updateStartNumber={updateStartNumber}
+              updateBT={updateBT}
+              updateNumber={updateNumber}
+              updateAction={updateAction}
+            />
+          ))}
+        </main>
       </div>
     </div>
   );
 }
 
+function TableBlock({
+  block,
+  blockIndex,
+  updateTableNumber,
+  updateStartNumber,
+  updateBT,
+  updateNumber,
+  updateAction,
+}) {
+  const rowNumbers = useMemo(
+    () =>
+      Array.from(
+        { length: ROWS_PER_TABLE },
+        (_, i) => block.startNumber + i
+      ),
+    [block.startNumber]
+  );
+
+  return (
+    <section style={styles.block}>
+      <div style={styles.controls}>
+        <label style={styles.label}>
+          TABLE #
+          <select
+            value={block.tableNumber}
+            onChange={(e) =>
+              updateTableNumber(blockIndex, Number(e.target.value))
+            }
+            style={styles.select}
+          >
+            {TABLES.map((table) => (
+              <option key={table} value={table}>
+                {table}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={styles.label}>
+          START #
+          <select
+            value={block.startNumber}
+            onChange={(e) =>
+              updateStartNumber(blockIndex, Number(e.target.value))
+            }
+            style={styles.select}
+          >
+            {START_NUMBERS.map((number) => (
+              <option key={number} value={number}>
+                {number}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div style={styles.tableTitle}>
+        TABLE #{block.tableNumber}
+      </div>
+
+      {block.rows.map((row, rowIndex) => (
+        <div key={rowIndex} style={styles.row}>
+          <button
+            type="button"
+            onClick={() => updateNumber(blockIndex, rowIndex)}
+            style={{
+              ...styles.cellButton,
+              ...cellStyle(row.numberState),
+            }}
+          >
+            {rowNumbers[rowIndex]}
+          </button>
+
+          <select
+            value={row.bt}
+            onChange={(e) =>
+              updateBT(blockIndex, rowIndex, e.target.value)
+            }
+            style={styles.btSelect}
+          >
+            <option value="">-</option>
+
+            {TABLES.map((table) => (
+              <option key={table} value={table}>
+                {table}
+              </option>
+            ))}
+          </select>
+
+          {ACTIONS.map((action) => (
+            <button
+              type="button"
+              key={action}
+              onClick={() =>
+                updateAction(blockIndex, rowIndex, action)
+              }
+              style={{
+                ...styles.cellButton,
+                ...cellStyle(row.actions[action]),
+              }}
+            >
+              {action}
+            </button>
+          ))}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 const styles = {
   page: {
-    background: "#ececec",
     minHeight: "100vh",
-    padding: 10,
+    background: "#e5e7eb",
+    padding: 8,
+    boxSizing: "border-box",
     fontFamily: "Arial, Helvetica, sans-serif",
-    color: "black",
   },
 
-  container: {
-    maxWidth: 1400,
+  app: {
+    maxWidth: 1180,
     margin: "0 auto",
+    background: "white",
+    borderRadius: 14,
+    padding: 10,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
   },
 
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
-  },
-
-  logoBox: {
-    textAlign: "center",
-  },
-
-  logoText: {
-    color: "#d4a017",
-    fontWeight: 900,
-    fontSize: 28,
-    letterSpacing: 1,
-  },
-
-  title: {
-    fontSize: 26,
-    fontWeight: 900,
-    marginTop: 2,
-    color: "black",
-  },
-
-  resetButton: {
-    background: "black",
-    color: "white",
-    border: "none",
-    borderRadius: 8,
-    padding: "12px 18px",
-    fontWeight: 900,
-    fontSize: 16,
-    cursor: "pointer",
-    WebkitTextFillColor: "white",
-  },
-
-  topBar: {
-    display: "grid",
-    gridTemplateColumns: "1fr 170px",
-    gap: 10,
-    marginBottom: 10,
-    alignItems: "stretch",
-  },
-
-  explanation: {
-    border: "2px solid #666",
-    borderRadius: 10,
-    textAlign: "center",
-    padding: 10,
-    background: "white",
-    color: "black",
-    fontWeight: 700,
-  },
-
-  tableCountLabel: {
-    border: "2px solid #666",
-    borderRadius: 10,
-    background: "white",
-    color: "black",
-    fontWeight: 900,
-    fontSize: 12,
-    padding: 6,
-    textAlign: "center",
-  },
-
-  tableCountSelect: {
-    width: "100%",
-    marginTop: 4,
-    padding: 6,
-    borderRadius: 8,
-    border: "1px solid #bbb",
-    background: "white",
-    color: "black",
-    WebkitTextFillColor: "black",
-    fontWeight: 900,
-    fontSize: 16,
-  },
-
-  scrollArea: {
-    overflowX: "auto",
-    paddingBottom: 10,
-  },
-
-  grid: {
-    display: "grid",
-    gap: 10,
-    minWidth: "max-content",
-  },
-
-  block: {
-    background: "#f8f8f8",
-    border: "2px solid #666",
-    borderRadius: 10,
-    padding: 4,
-  },
-
-  topControls: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 8,
     marginBottom: 8,
   },
 
-  controlLabel: {
-    textAlign: "center",
+  logo: {
+    height: 90,
+    maxWidth: 260,
+    objectFit: "contain",
+  },
+
+  title: {
+    margin: 0,
+    fontSize: 26,
     fontWeight: 900,
+    lineHeight: 1,
+  },
+
+  resetButton: {
+    border: "2px solid #111827",
+    background: "#111827",
+    color: "white",
+    fontWeight: 900,
+    borderRadius: 10,
+    padding: "9px 14px",
     fontSize: 14,
-    marginBottom: 4,
-    color: "black",
+    cursor: "pointer",
+  },
+
+  tableGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+  },
+
+  block: {
+    border: "2px solid #111827",
+    borderRadius: 10,
+    overflow: "hidden",
+    background: "#f8fafc",
+  },
+
+  controls: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 5,
+    padding: 5,
+    background: "#ffffff",
+  },
+
+  label: {
+    fontSize: 10,
+    fontWeight: 900,
   },
 
   select: {
     width: "100%",
-    padding: 8,
-    borderRadius: 8,
-    border: "1px solid #bbb",
-    fontWeight: 900,
+    marginTop: 2,
+    padding: 5,
     fontSize: 16,
+    fontWeight: 900,
+    borderRadius: 7,
+    border: "1px solid #94a3b8",
     background: "white",
-    color: "black",
-    WebkitTextFillColor: "black",
   },
 
   tableTitle: {
-    background: "black",
+    background: "#111827",
     color: "white",
     textAlign: "center",
     fontWeight: 900,
-    fontSize: 20,
-    borderRadius: 6,
-    padding: 6,
-    marginBottom: 4,
-    WebkitTextFillColor: "white",
+    fontSize: 18,
+    padding: "5px 0",
   },
 
   row: {
     display: "grid",
     gridTemplateColumns: "repeat(6, 1fr)",
-    gap: 4,
-    marginBottom: 4,
+    gap: 2,
+    padding: "2px",
+    background: "#cbd5e1",
   },
 
-  cell: {
-    height: 38,
-    borderRadius: 6,
-    border: "1px solid #ccc",
+  cellButton: {
+    minHeight: 22,
+    border: "1px solid",
+    borderRadius: 5,
+    fontSize: 12,
     fontWeight: 900,
-    fontSize: 18,
+    padding: 0,
     cursor: "pointer",
-    color: "black",
-    WebkitTextFillColor: "black",
   },
 
   btSelect: {
-    height: 38,
-    borderRadius: 6,
-    border: "1px solid #e1c14d",
-    background: "#fff6c7",
-    color: "black",
-    WebkitTextFillColor: "black",
+    minHeight: 22,
+    border: "1px solid #d6b94c",
+    borderRadius: 5,
+    fontSize: 12,
     fontWeight: 900,
-    fontSize: 16,
+    padding: 0,
+    background: "#fef3c7",
+    color: "#111827",
     textAlign: "center",
     cursor: "pointer",
   },
