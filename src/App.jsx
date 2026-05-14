@@ -4,7 +4,8 @@ const TABLES = [1, 2, 3, 5, 6, 7, 8, 9, 10];
 const START_NUMBERS = [1, 36, 71, 106, 141, 176, 211];
 const ACTIONS = ["P", "F", "T", "R"];
 const ROWS_PER_TABLE = 35;
-const STORAGE_KEY = "soft-h4h-saved-v4";
+const MAX_TABLE_BLOCKS = 10;
+const STORAGE_KEY = "soft-h4h-saved-v5";
 
 function createRows() {
   return Array.from({ length: ROWS_PER_TABLE }, () => ({
@@ -15,8 +16,8 @@ function createRows() {
 }
 
 function createInitialBlocks() {
-  return Array.from({ length: 3 }, (_, i) => ({
-    tableNumber: TABLES[i],
+  return Array.from({ length: MAX_TABLE_BLOCKS }, (_, i) => ({
+    tableNumber: TABLES[i] || 1,
     startNumber: 36,
     rows: createRows(),
   }));
@@ -27,6 +28,7 @@ function loadSaved() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
   } catch {}
+
   return { visibleTables: 3, blocks: createInitialBlocks() };
 }
 
@@ -39,8 +41,10 @@ function nextState(value) {
 function cellStyle(value) {
   if (value === 1)
     return { background: "#22c55e", color: "white", borderColor: "#15803d" };
+
   if (value === 2)
     return { background: "#ef4444", color: "white", borderColor: "#b91c1c" };
+
   return { background: "white", color: "#111827", borderColor: "#cbd5e1" };
 }
 
@@ -53,25 +57,6 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ visibleTables, blocks }));
   }, [visibleTables, blocks]);
 
-  const ensureBlocks = (count) => {
-    setBlocks((current) => {
-      const next = [...current];
-      while (next.length < count) {
-        next.push({
-          tableNumber: TABLES[next.length] || 1,
-          startNumber: 36,
-          rows: createRows(),
-        });
-      }
-      return next;
-    });
-  };
-
-  const changeVisibleTables = (count) => {
-    setVisibleTables(count);
-    ensureBlocks(count);
-  };
-
   const updateBlock = (blockIndex, updater) => {
     setBlocks((current) =>
       current.map((block, i) => (i === blockIndex ? updater(block) : block))
@@ -80,6 +65,7 @@ export default function App() {
 
   const resetAll = () => {
     localStorage.removeItem(STORAGE_KEY);
+
     setBlocks((current) =>
       current.map((block) => ({
         ...block,
@@ -102,12 +88,16 @@ export default function App() {
               TABLE COLUMNS
               <select
                 value={visibleTables}
-                onChange={(e) => changeVisibleTables(Number(e.target.value))}
+                onChange={(e) => setVisibleTables(Number(e.target.value))}
                 style={styles.topSelect}
               >
-                <option value={1}>1 table</option>
-                <option value={2}>2 tables</option>
-                <option value={3}>3 tables</option>
+                {Array.from({ length: MAX_TABLE_BLOCKS }, (_, i) => i + 1).map(
+                  (number) => (
+                    <option key={number} value={number}>
+                      {number} table{number > 1 ? "s" : ""}
+                    </option>
+                  )
+                )}
               </select>
             </label>
 
@@ -120,7 +110,7 @@ export default function App() {
         <main
           style={{
             ...styles.tableGrid,
-            gridTemplateColumns: `repeat(${visibleTables}, 1fr)`,
+            gridTemplateColumns: `repeat(${visibleTables}, 355px)`,
           }}
         >
           {blocks.slice(0, visibleTables).map((block, blockIndex) => (
@@ -164,7 +154,9 @@ function TableBlock({ block, blockIndex, updateBlock }) {
     updateBlock(blockIndex, (block) => ({
       ...block,
       rows: block.rows.map((row, i) =>
-        i === rowIndex ? { ...row, numberState: nextState(row.numberState) } : row
+        i === rowIndex
+          ? { ...row, numberState: nextState(row.numberState) }
+          : row
       ),
     }));
   };
@@ -238,6 +230,7 @@ function TableBlock({ block, blockIndex, updateBlock }) {
             style={styles.btSelect}
           >
             <option value="">-</option>
+
             {TABLES.map((table) => (
               <option key={table} value={table}>
                 {table}
@@ -270,15 +263,18 @@ const styles = {
     fontFamily: "Arial, Helvetica, sans-serif",
     overflowX: "auto",
   },
+
   app: {
     minWidth: 760,
-    maxWidth: 1180,
+    width: "max-content",
+    maxWidth: "none",
     margin: "0 auto",
     background: "white",
     borderRadius: 14,
     padding: 10,
     boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
   },
+
   header: {
     display: "flex",
     justifyContent: "space-between",
@@ -286,31 +282,37 @@ const styles = {
     gap: 10,
     marginBottom: 8,
   },
+
   logoBox: {
     textAlign: "center",
     flex: 1,
   },
+
   logo: {
     height: 90,
     maxWidth: 260,
     objectFit: "contain",
   },
+
   title: {
     margin: 0,
     fontSize: 24,
     fontWeight: 900,
     color: "#000",
   },
+
   topControls: {
     display: "flex",
     alignItems: "center",
     gap: 8,
   },
+
   topLabel: {
     fontSize: 10,
     fontWeight: 900,
     color: "#000",
   },
+
   topSelect: {
     display: "block",
     marginTop: 2,
@@ -322,6 +324,7 @@ const styles = {
     background: "white",
     color: "#000",
   },
+
   resetButton: {
     border: "2px solid #111827",
     background: "#111827",
@@ -332,16 +335,19 @@ const styles = {
     fontSize: 14,
     cursor: "pointer",
   },
+
   tableGrid: {
     display: "grid",
     gap: 8,
   },
+
   block: {
     border: "2px solid #111827",
     borderRadius: 10,
     overflow: "hidden",
     background: "#f8fafc",
   },
+
   controls: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -349,11 +355,13 @@ const styles = {
     padding: 5,
     background: "#ffffff",
   },
+
   label: {
     fontSize: 10,
     fontWeight: 900,
     color: "#000",
   },
+
   select: {
     width: "100%",
     marginTop: 2,
@@ -365,6 +373,7 @@ const styles = {
     background: "white",
     color: "#000",
   },
+
   tableTitle: {
     background: "#111827",
     color: "white",
@@ -373,6 +382,7 @@ const styles = {
     fontSize: 18,
     padding: "5px 0",
   },
+
   row: {
     display: "grid",
     gridTemplateColumns: "42px 46px 1fr 1fr 1fr 1fr",
@@ -380,6 +390,7 @@ const styles = {
     padding: "2px",
     background: "#cbd5e1",
   },
+
   cellButton: {
     minHeight: 22,
     border: "1px solid",
@@ -390,6 +401,7 @@ const styles = {
     cursor: "pointer",
     color: "#000",
   },
+
   btSelect: {
     minHeight: 22,
     border: "1px solid #d6b94c",
