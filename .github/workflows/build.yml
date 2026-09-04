@@ -19,4 +19,22 @@ jobs:
       - run: npm run build
       - name: Check production app
         if: github.ref == 'refs/heads/main'
-        run: curl --fail --location --retry 12 --retry-delay 5 --retry-all-errors --max-time 20 https://triton-soft-h4h-elmu-2020.vercel.app/ -o /dev/null
+        run: |
+          BASE="https://triton-soft-h4h-elmu-2020.vercel.app"
+          for ATTEMPT in $(seq 1 24); do
+            if curl -fsSL --max-time 20 "${BASE}/" -o /tmp/index.html; then
+              CSS=$(grep -oE 'href="/assets/[^"]+\.css"' /tmp/index.html | head -1 | cut -d'"' -f2 || true)
+              if [ -n "${CSS}" ] && curl -fsSL --max-time 20 "${BASE}${CSS}" -o /tmp/app.css; then
+                if grep -q -- "--h4h-fullscreen-release:20260904" /tmp/app.css; then
+                  echo "Production bundle contains the fullscreen/touch release."
+                  exit 0
+                fi
+              fi
+            fi
+
+            echo "Waiting for refreshed deployment (${ATTEMPT}/24)…"
+            sleep 5
+          done
+
+          echo "Production bundle did not expose the expected release marker."
+          exit 1
