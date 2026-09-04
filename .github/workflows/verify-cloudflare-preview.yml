@@ -1,0 +1,24 @@
+name: Verify Cloudflare preview
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check refreshed branch preview
+        run: |
+          BASE="https://cloudflare-workers-autoconfig-softh4h.elmu-bfb.workers.dev"
+          for ATTEMPT in $(seq 1 18); do
+            if curl -fsSL --max-time 10 "${BASE}/" -o /tmp/index.html; then
+              CSS=$(grep -oE 'href="/assets/[^"]+\.css"' /tmp/index.html | head -1 | cut -d'"' -f2 || true)
+              if [ -n "${CSS}" ] && curl -fsSL --max-time 10 "${BASE}${CSS}" -o /tmp/app.css && grep -q -- "--h4h-fullscreen-release:20260904" /tmp/app.css; then
+                echo "Refreshed Soft H4H Cloudflare preview is live."
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          exit 1
