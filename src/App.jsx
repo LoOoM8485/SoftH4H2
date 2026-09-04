@@ -110,7 +110,7 @@ export default function App() {
         <header className="app-header">
           <div className="brand-lockup">
             <div className="brand-logo-wrap">
-              <img src="/logo.png" alt="Triton Poker" className="brand-logo" />
+              <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Triton Poker" className="brand-logo" />
             </div>
             <div>
               <div className="eyebrow">LIVE EVENTS · OPERATIONS TOOL</div>
