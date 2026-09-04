@@ -1,3 +1,7 @@
+:root {
+  --h4h-fullscreen-release: 20260904;
+}
+
 .utility-button::before {
   content: "⛶";
   display: inline-block;
