@@ -38,24 +38,41 @@ function nextState(value) {
   return 0;
 }
 
-function cellStyle(value) {
-  if (value === 1)
-    return { background: "#22c55e", color: "white", borderColor: "#15803d" };
-
-  if (value === 2)
-    return { background: "#ef4444", color: "white", borderColor: "#b91c1c" };
-
-  return { background: "white", color: "#111827", borderColor: "#cbd5e1" };
+function stateClass(value) {
+  if (value === 1) return "is-green";
+  if (value === 2) return "is-red";
+  return "is-neutral";
 }
 
 export default function App() {
-  const saved = loadSaved();
-  const [visibleTables, setVisibleTables] = useState(saved.visibleTables || 3);
-  const [blocks, setBlocks] = useState(saved.blocks || createInitialBlocks());
+  const initial = useMemo(() => loadSaved(), []);
+  const [visibleTables, setVisibleTables] = useState(initial.visibleTables || 3);
+  const [blocks, setBlocks] = useState(initial.blocks || createInitialBlocks());
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ visibleTables, blocks }));
   }, [visibleTables, blocks]);
+
+  useEffect(() => {
+    const onFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFullscreen);
+    return () => document.removeEventListener("fullscreenchange", onFullscreen);
+  }, []);
+
+  const markedRows = useMemo(() => {
+    return blocks.slice(0, visibleTables).reduce((count, block) => {
+      return (
+        count +
+        block.rows.filter(
+          (row) =>
+            row.numberState !== 0 ||
+            row.bt !== "" ||
+            ACTIONS.some((action) => row.actions[action] !== 0)
+        ).length
+      );
+    }, 0);
+  }, [blocks, visibleTables]);
 
   const updateBlock = (blockIndex, updater) => {
     setBlocks((current) =>
@@ -64,8 +81,11 @@ export default function App() {
   };
 
   const resetAll = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    if (!window.confirm("Reset all Soft H4H marks? Table and start-number selections will stay in place.")) {
+      return;
+    }
 
+    localStorage.removeItem(STORAGE_KEY);
     setBlocks((current) =>
       current.map((block) => ({
         ...block,
@@ -74,44 +94,88 @@ export default function App() {
     );
   };
 
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  };
+
   return (
-    <div style={styles.page}>
-      <div style={styles.app}>
-        <header style={styles.header}>
-          <div style={styles.logoBox}>
-            <img src="/logo.png" alt="Triton Poker" style={styles.logo} />
-            <h1 style={styles.title}>SOFT H4H</h1>
+    <div className="app-shell">
+      <div className="app-surface">
+        <header className="app-header">
+          <div className="brand-lockup">
+            <div className="brand-logo-wrap">
+              <img src="/logo.png" alt="Triton Poker" className="brand-logo" />
+            </div>
+            <div>
+              <div className="eyebrow">LIVE EVENTS · OPERATIONS TOOL</div>
+              <h1>SOFT HAND-FOR-HAND</h1>
+              <p className="subtitle">Fast live hand tracking across active tables</p>
+            </div>
           </div>
 
-          <div style={styles.topControls}>
-            <label style={styles.topLabel}>
-              TABLE COLUMNS
-              <select
-                value={visibleTables}
-                onChange={(e) => setVisibleTables(Number(e.target.value))}
-                style={styles.topSelect}
-              >
-                {Array.from({ length: MAX_TABLE_BLOCKS }, (_, i) => i + 1).map(
-                  (number) => (
-                    <option key={number} value={number}>
-                      {number} table{number > 1 ? "s" : ""}
-                    </option>
-                  )
-                )}
-              </select>
-            </label>
+          <div className="header-actions">
+            <div className="status-card">
+              <span className="status-dot" />
+              <span>
+                <strong>AUTO-SAVED</strong>
+                <small>on this device</small>
+              </span>
+            </div>
 
-            <button onClick={resetAll} style={styles.resetButton}>
+            <div className="metric-card">
+              <span className="metric-label">TABLES</span>
+              <strong>{visibleTables}</strong>
+            </div>
+
+            <div className="metric-card">
+              <span className="metric-label">MARKED ROWS</span>
+              <strong>{markedRows}</strong>
+            </div>
+
+            <button className="utility-button" type="button" onClick={toggleFullscreen}>
+              {isFullscreen ? "EXIT FULL" : "FULL SCREEN"}
+            </button>
+
+            <button className="danger-button" type="button" onClick={resetAll}>
               RESET
             </button>
           </div>
         </header>
 
+        <div className="control-strip">
+          <label className="control-field">
+            <span>TABLE COLUMNS</span>
+            <select
+              value={visibleTables}
+              onChange={(e) => setVisibleTables(Number(e.target.value))}
+            >
+              {Array.from({ length: MAX_TABLE_BLOCKS }, (_, i) => i + 1).map(
+                (number) => (
+                  <option key={number} value={number}>
+                    {number} table{number > 1 ? "s" : ""}
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+          <div className="legend" aria-label="Cell state legend">
+            <span className="legend-title">TAP CYCLE</span>
+            <span><i className="legend-swatch neutral" /> Neutral</span>
+            <span><i className="legend-swatch green" /> Green</span>
+            <span><i className="legend-swatch red" /> Red</span>
+          </div>
+        </div>
+
         <main
-          style={{
-            ...styles.tableGrid,
-            gridTemplateColumns: `repeat(${visibleTables}, 355px)`,
-          }}
+          className="tables-board"
+          style={{ gridTemplateColumns: `repeat(${visibleTables}, minmax(330px, 355px))` }}
         >
           {blocks.slice(0, visibleTables).map((block, blockIndex) => (
             <TableBlock
@@ -134,26 +198,26 @@ function TableBlock({ block, blockIndex, updateBlock }) {
   );
 
   const updateTableNumber = (value) => {
-    updateBlock(blockIndex, (block) => ({ ...block, tableNumber: value }));
+    updateBlock(blockIndex, (current) => ({ ...current, tableNumber: value }));
   };
 
   const updateStartNumber = (value) => {
-    updateBlock(blockIndex, (block) => ({ ...block, startNumber: value }));
+    updateBlock(blockIndex, (current) => ({ ...current, startNumber: value }));
   };
 
   const updateBT = (rowIndex, value) => {
-    updateBlock(blockIndex, (block) => ({
-      ...block,
-      rows: block.rows.map((row, i) =>
+    updateBlock(blockIndex, (current) => ({
+      ...current,
+      rows: current.rows.map((row, i) =>
         i === rowIndex ? { ...row, bt: value } : row
       ),
     }));
   };
 
   const updateNumber = (rowIndex) => {
-    updateBlock(blockIndex, (block) => ({
-      ...block,
-      rows: block.rows.map((row, i) =>
+    updateBlock(blockIndex, (current) => ({
+      ...current,
+      rows: current.rows.map((row, i) =>
         i === rowIndex
           ? { ...row, numberState: nextState(row.numberState) }
           : row
@@ -162,9 +226,9 @@ function TableBlock({ block, blockIndex, updateBlock }) {
   };
 
   const updateAction = (rowIndex, action) => {
-    updateBlock(blockIndex, (block) => ({
-      ...block,
-      rows: block.rows.map((row, i) =>
+    updateBlock(blockIndex, (current) => ({
+      ...current,
+      rows: current.rows.map((row, i) =>
         i === rowIndex
           ? {
               ...row,
@@ -179,14 +243,13 @@ function TableBlock({ block, blockIndex, updateBlock }) {
   };
 
   return (
-    <section style={styles.block}>
-      <div style={styles.controls}>
-        <label style={styles.label}>
-          TABLE #
+    <section className="table-card">
+      <div className="table-toolbar">
+        <label>
+          <span>TABLE #</span>
           <select
             value={block.tableNumber}
             onChange={(e) => updateTableNumber(Number(e.target.value))}
-            style={styles.select}
           >
             {TABLES.map((table) => (
               <option key={table} value={table}>
@@ -196,12 +259,11 @@ function TableBlock({ block, blockIndex, updateBlock }) {
           </select>
         </label>
 
-        <label style={styles.label}>
-          START #
+        <label>
+          <span>START #</span>
           <select
             value={block.startNumber}
             onChange={(e) => updateStartNumber(Number(e.target.value))}
-            style={styles.select}
           >
             {START_NUMBERS.map((number) => (
               <option key={number} value={number}>
@@ -212,206 +274,59 @@ function TableBlock({ block, blockIndex, updateBlock }) {
         </label>
       </div>
 
-      <div style={styles.tableTitle}>TABLE #{block.tableNumber}</div>
+      <div className="table-title-row">
+        <span className="table-kicker">ACTIVE TABLE</span>
+        <strong>TABLE {block.tableNumber}</strong>
+      </div>
 
-      {block.rows.map((row, rowIndex) => (
-        <div key={rowIndex} style={styles.row}>
-          <button
-            type="button"
-            onClick={() => updateNumber(rowIndex)}
-            style={{ ...styles.cellButton, ...cellStyle(row.numberState) }}
-          >
-            {rowNumbers[rowIndex]}
-          </button>
+      <div className="row-grid row-grid-header">
+        <div>#</div>
+        <div>BT</div>
+        {ACTIONS.map((action) => (
+          <div key={action}>{action}</div>
+        ))}
+      </div>
 
-          <select
-            value={row.bt}
-            onChange={(e) => updateBT(rowIndex, e.target.value)}
-            style={styles.btSelect}
-          >
-            <option value="">-</option>
-
-            {TABLES.map((table) => (
-              <option key={table} value={table}>
-                {table}
-              </option>
-            ))}
-          </select>
-
-          {ACTIONS.map((action) => (
+      <div className="rows-wrap">
+        {block.rows.map((row, rowIndex) => (
+          <div key={rowIndex} className="row-grid hand-row">
             <button
               type="button"
-              key={action}
-              onClick={() => updateAction(rowIndex, action)}
-              style={{ ...styles.cellButton, ...cellStyle(row.actions[action]) }}
+              title={`Hand ${rowNumbers[rowIndex]}`}
+              onClick={() => updateNumber(rowIndex)}
+              className={`state-cell hand-number ${stateClass(row.numberState)}`}
             >
-              {action}
+              {rowNumbers[rowIndex]}
             </button>
-          ))}
-        </div>
-      ))}
+
+            <select
+              value={row.bt}
+              onChange={(e) => updateBT(rowIndex, e.target.value)}
+              className="bt-select"
+              aria-label={`Break table for hand ${rowNumbers[rowIndex]}`}
+            >
+              <option value="">-</option>
+              {TABLES.map((table) => (
+                <option key={table} value={table}>
+                  {table}
+                </option>
+              ))}
+            </select>
+
+            {ACTIONS.map((action) => (
+              <button
+                type="button"
+                key={action}
+                title={`${action} · hand ${rowNumbers[rowIndex]}`}
+                onClick={() => updateAction(rowIndex, action)}
+                className={`state-cell ${stateClass(row.actions[action])}`}
+              >
+                {action}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#e5e7eb",
-    padding: 8,
-    boxSizing: "border-box",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    overflowX: "auto",
-  },
-
-  app: {
-    minWidth: 760,
-    width: "max-content",
-    maxWidth: "none",
-    margin: "0 auto",
-    background: "white",
-    borderRadius: 14,
-    padding: 10,
-    boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
-  },
-
-  logoBox: {
-    textAlign: "center",
-    flex: 1,
-  },
-
-  logo: {
-    height: 90,
-    maxWidth: 260,
-    objectFit: "contain",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: 24,
-    fontWeight: 900,
-    color: "#000",
-  },
-
-  topControls: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  topLabel: {
-    fontSize: 10,
-    fontWeight: 900,
-    color: "#000",
-  },
-
-  topSelect: {
-    display: "block",
-    marginTop: 2,
-    padding: 6,
-    fontSize: 15,
-    fontWeight: 900,
-    borderRadius: 8,
-    border: "1px solid #94a3b8",
-    background: "white",
-    color: "#000",
-  },
-
-  resetButton: {
-    border: "2px solid #111827",
-    background: "#111827",
-    color: "white",
-    fontWeight: 900,
-    borderRadius: 10,
-    padding: "9px 14px",
-    fontSize: 14,
-    cursor: "pointer",
-  },
-
-  tableGrid: {
-    display: "grid",
-    gap: 8,
-  },
-
-  block: {
-    border: "2px solid #111827",
-    borderRadius: 10,
-    overflow: "hidden",
-    background: "#f8fafc",
-  },
-
-  controls: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 5,
-    padding: 5,
-    background: "#ffffff",
-  },
-
-  label: {
-    fontSize: 10,
-    fontWeight: 900,
-    color: "#000",
-  },
-
-  select: {
-    width: "100%",
-    marginTop: 2,
-    padding: 5,
-    fontSize: 16,
-    fontWeight: 900,
-    borderRadius: 7,
-    border: "1px solid #94a3b8",
-    background: "white",
-    color: "#000",
-  },
-
-  tableTitle: {
-    background: "#111827",
-    color: "white",
-    textAlign: "center",
-    fontWeight: 900,
-    fontSize: 18,
-    padding: "5px 0",
-  },
-
-  row: {
-    display: "grid",
-    gridTemplateColumns: "42px 46px 1fr 1fr 1fr 1fr",
-    gap: 2,
-    padding: "2px",
-    background: "#cbd5e1",
-  },
-
-  cellButton: {
-    minHeight: 22,
-    border: "1px solid",
-    borderRadius: 5,
-    fontSize: 12,
-    fontWeight: 900,
-    padding: 0,
-    cursor: "pointer",
-    color: "#000",
-  },
-
-  btSelect: {
-    minHeight: 22,
-    border: "1px solid #d6b94c",
-    borderRadius: 5,
-    fontSize: 12,
-    fontWeight: 900,
-    padding: 0,
-    background: "#fef3c7",
-    color: "#000",
-    textAlign: "center",
-    cursor: "pointer",
-  },
-};
