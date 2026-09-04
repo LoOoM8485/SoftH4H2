@@ -1,0 +1,22 @@
+name: Check optimized Vercel URLs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public probe and Soft H4H
+        run: |
+          set -u
+          for URL in \
+            "https://triton-public-probe-elmu-2020.vercel.app/" \
+            "https://triton-soft-h4h-ops-elmu-2020.vercel.app/"; do
+            echo "=== $URL ==="
+            curl -sS -L --max-time 20 -o /tmp/page.html -w "HTTP=%{http_code} FINAL=%{url_effective}\n" "$URL" || true
+            grep -o '<title>[^<]*</title>' /tmp/page.html | head -1 || true
+            grep -o 'SOFT HAND-FOR-HAND\|public probe\|vercel.com/login' /tmp/page.html | head -3 || true
+          done
