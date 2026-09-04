@@ -1,0 +1,74 @@
+.utility-button::before {
+  content: "⛶";
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: -1px;
+}
+
+.utility-button,
+.danger-button,
+.state-cell,
+.bt-select,
+.control-field select,
+.table-toolbar select {
+  touch-action: manipulation;
+}
+
+:fullscreen body,
+:-webkit-full-screen body {
+  background: #07090d;
+}
+
+:fullscreen .app-shell,
+:-webkit-full-screen .app-shell {
+  min-height: 100dvh;
+  padding: 0;
+}
+
+:fullscreen .app-surface,
+:-webkit-full-screen .app-surface {
+  min-height: 100dvh;
+  padding: 8px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:fullscreen .app-header,
+:-webkit-full-screen .app-header {
+  top: 0;
+  margin-bottom: 7px;
+  border-radius: 0 0 16px 16px;
+}
+
+:fullscreen .control-strip,
+:-webkit-full-screen .control-strip {
+  margin-bottom: 7px;
+}
+
+@media (pointer: coarse) {
+  .utility-button,
+  .danger-button {
+    min-height: 50px;
+    padding-inline: 14px;
+  }
+
+  .state-cell,
+  .bt-select {
+    min-height: 32px;
+  }
+
+  .control-field select,
+  .table-toolbar select {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 900px) {
+  .utility-button,
+  .danger-button {
+    min-width: 108px;
+  }
+}
