@@ -1,0 +1,17 @@
+{
+  "name": "Soft Hand-for-Hand · Triton Live Events",
+  "short_name": "Soft H4H",
+  "description": "Live hand tracking tool for Triton Live Events.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07090d",
+  "theme_color": "#07090d",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
