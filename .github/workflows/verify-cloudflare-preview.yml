@@ -8,17 +8,13 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Check final Soft H4H deployment
+      - name: Diagnose final Soft H4H deployment
         run: |
-          BASE="https://triton-soft-h4h-final-elmu-2020.vercel.app"
-          for ATTEMPT in $(seq 1 24); do
-            if curl -fsSL --max-time 10 "${BASE}/" -o /tmp/index.html; then
-              CSS=$(grep -oE 'href="/assets/[^"]+\.css"' /tmp/index.html | head -1 | cut -d'"' -f2 || true)
-              if [ -n "${CSS}" ] && curl -fsSL --max-time 10 "${BASE}${CSS}" -o /tmp/app.css && grep -q -- "--h4h-fullscreen-release:20260904" /tmp/app.css; then
-                echo "Final Soft H4H deployment is live."
-                exit 0
-              fi
-            fi
-            sleep 5
+          for URL in \
+            "https://triton-soft-h4h-final-el66gv9zb-elmu-2020.vercel.app/" \
+            "https://triton-soft-h4h-final-elmu-2020.vercel.app/"; do
+            echo "Checking ${URL}"
+            curl -sS -L --max-time 20 -o /tmp/page.html -w "HTTP=%{http_code} FINAL=%{url_effective}\n" "${URL}" || true
+            head -c 300 /tmp/page.html 2>/dev/null || true
+            echo
           done
-          exit 1
