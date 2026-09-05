@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 const TABLES = [1, 2, 3, 5, 6, 7, 8, 9, 10];
 const START_NUMBERS = [1, 36, 71, 106, 141, 176, 211];
 const ACTIONS = ["P", "F", "T", "R"];
+const PLAYER_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8];
 const ROWS_PER_TABLE = 35;
 const MAX_TABLE_BLOCKS = 10;
 const STORAGE_KEY = "soft-h4h-saved-v5";
@@ -19,14 +20,29 @@ function createInitialBlocks() {
   return Array.from({ length: MAX_TABLE_BLOCKS }, (_, i) => ({
     tableNumber: TABLES[i] || 1,
     startNumber: 36,
+    playerCount: 8,
     rows: createRows(),
   }));
+}
+
+function normalizePlayerCount(value) {
+  const count = Number(value);
+  return PLAYER_COUNTS.includes(count) ? count : 8;
 }
 
 function loadSaved() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        ...parsed,
+        blocks: (parsed.blocks || createInitialBlocks()).map((block) => ({
+          ...block,
+          playerCount: normalizePlayerCount(block.playerCount),
+        })),
+      };
+    }
   } catch {}
 
   return { visibleTables: 3, blocks: createInitialBlocks() };
@@ -74,6 +90,14 @@ export default function App() {
     }, 0);
   }, [blocks, visibleTables]);
 
+  const totalPlayers = useMemo(
+    () =>
+      blocks
+        .slice(0, visibleTables)
+        .reduce((total, block) => total + normalizePlayerCount(block.playerCount), 0),
+    [blocks, visibleTables]
+  );
+
   const updateBlock = (blockIndex, updater) => {
     setBlocks((current) =>
       current.map((block, i) => (i === blockIndex ? updater(block) : block))
@@ -81,7 +105,7 @@ export default function App() {
   };
 
   const resetAll = () => {
-    if (!window.confirm("Reset all Soft H4H marks? Table and start-number selections will stay in place.")) {
+    if (!window.confirm("Reset all Soft H4H marks? Table, player-count and start-number selections will stay in place.")) {
       return;
     }
 
@@ -134,6 +158,11 @@ export default function App() {
             </div>
 
             <div className="metric-card">
+              <span className="metric-label">PLAYERS</span>
+              <strong>{totalPlayers}</strong>
+            </div>
+
+            <div className="metric-card">
               <span className="metric-label">MARKED ROWS</span>
               <strong>{markedRows}</strong>
             </div>
@@ -173,6 +202,13 @@ export default function App() {
           </div>
         </div>
 
+        <PlayerCountDock
+          blocks={blocks}
+          visibleTables={visibleTables}
+          updateBlock={updateBlock}
+          totalPlayers={totalPlayers}
+        />
+
         <main
           className="tables-board"
           style={{ gridTemplateColumns: `repeat(${visibleTables}, minmax(330px, 355px))` }}
@@ -188,6 +224,46 @@ export default function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+function PlayerCountDock({ blocks, visibleTables, updateBlock, totalPlayers }) {
+  const setPlayerCount = (blockIndex, playerCount) => {
+    updateBlock(blockIndex, (current) => ({ ...current, playerCount }));
+  };
+
+  return (
+    <section className="player-count-dock" aria-label="Players at each active table">
+      <div className="player-count-dock-heading">
+        <span>PLAYERS AT TABLE</span>
+        <strong>{totalPlayers} TOTAL</strong>
+      </div>
+
+      <div
+        className="player-count-grid"
+        style={{ gridTemplateColumns: `repeat(${visibleTables}, minmax(330px, 355px))` }}
+      >
+        {blocks.slice(0, visibleTables).map((block, blockIndex) => (
+          <div className="player-count-card" key={blockIndex}>
+            <div className="player-count-card-title">TABLE {block.tableNumber}</div>
+            <div className="player-count-options">
+              {PLAYER_COUNTS.map((count) => (
+                <button
+                  type="button"
+                  key={count}
+                  className={`player-count-button ${normalizePlayerCount(block.playerCount) === count ? "is-selected" : ""}`}
+                  onClick={() => setPlayerCount(blockIndex, count)}
+                  aria-pressed={normalizePlayerCount(block.playerCount) === count}
+                  aria-label={`Table ${block.tableNumber}: ${count} player${count === 1 ? "" : "s"}`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
