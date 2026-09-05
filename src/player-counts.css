@@ -1,0 +1,107 @@
+.player-count-dock {
+  position: sticky;
+  top: 78px;
+  z-index: 26;
+  width: max-content;
+  margin-bottom: 9px;
+  padding: 7px;
+  border: 1px solid rgba(215, 184, 91, 0.34);
+  border-radius: 14px;
+  background: rgba(8, 11, 16, 0.94);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.player-count-dock-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  padding: 0 4px 6px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.player-count-dock-heading strong {
+  color: var(--gold-soft);
+  font-size: 9px;
+}
+
+.player-count-grid {
+  display: grid;
+  gap: 9px;
+  width: max-content;
+}
+
+.player-count-card {
+  padding: 7px 8px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(22, 27, 37, 0.98), rgba(14, 18, 26, 0.98));
+}
+
+.player-count-card-title {
+  margin-bottom: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.player-count-options {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.player-count-button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: #fff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 90ms ease, filter 90ms ease, border-color 90ms ease, background 90ms ease;
+}
+
+.player-count-button:hover {
+  filter: brightness(0.96);
+}
+
+.player-count-button:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.player-count-button.is-selected {
+  border-color: var(--gold-soft);
+  background: linear-gradient(180deg, #f0d98a, #d7b85b);
+  color: #111;
+  box-shadow: 0 0 0 1px rgba(240, 217, 138, 0.18), 0 0 16px rgba(215, 184, 91, 0.22);
+}
+
+:fullscreen .player-count-dock,
+:-webkit-full-screen .player-count-dock {
+  top: 69px;
+}
+
+@media (pointer: coarse) {
+  .player-count-button {
+    min-height: 38px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 900px) {
+  .player-count-dock {
+    top: 8px;
+  }
+}
