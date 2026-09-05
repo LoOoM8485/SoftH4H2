@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
 const TABLES = [1, 2, 3, 5, 6, 7, 8, 9, 10];
 const START_NUMBERS = [1, 36, 71, 106, 141, 176, 211];
@@ -7,6 +9,7 @@ const PLAYER_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8];
 const ROWS_PER_TABLE = 35;
 const MAX_TABLE_BLOCKS = 10;
 const STORAGE_KEY = "soft-h4h-saved-v5";
+const CLOUD_DOC = doc(db, "softH4H", "main");
 
 function createRows() {
   return Array.from({ length: ROWS_PER_TABLE }, () => ({
@@ -30,19 +33,33 @@ function normalizePlayerCount(value) {
   return PLAYER_COUNTS.includes(count) ? count : 8;
 }
 
+function normalizeBlocks(blocks) {
+  const base = createInitialBlocks();
+  return base.map((fallback, index) => {
+    const block = blocks?.[index] || fallback;
+    return {
+      ...fallback,
+      ...block,
+      playerCount: normalizePlayerCount(block.playerCount),
+      rows: Array.isArray(block.rows) ? block.rows : fallback.rows,
+    };
+  });
+}
+
+function normalizeState(data) {
+  return {
+    visibleTables: Math.min(
+      MAX_TABLE_BLOCKS,
+      Math.max(1, Number(data?.visibleTables) || 3)
+    ),
+    blocks: normalizeBlocks(data?.blocks),
+  };
+}
+
 function loadSaved() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        ...parsed,
-        blocks: (parsed.blocks || createInitialBlocks()).map((block) => ({
-          ...block,
-          playerCount: normalizePlayerCount(block.playerCount),
-        })),
-      };
-    }
+    if (saved) return normalizeState(JSON.parse(saved));
   } catch {}
 
   return { visibleTables: 3, blocks: createInitialBlocks() };
@@ -60,15 +77,120 @@ function stateClass(value) {
   return "is-neutral";
 }
 
+function syncText(mode) {
+  if (mode === "live") return ["CLOUD LIVE", "all devices synced"];
+  if (mode === "syncing") return ["SYNCING", "saving to cloud"];
+  if (mode === "offline") return ["OFFLINE", "queued on this device"];
+  return ["CONNECTING", "to shared state"];
+}
+
 export default function App() {
   const initial = useMemo(() => loadSaved(), []);
   const [visibleTables, setVisibleTables] = useState(initial.visibleTables || 3);
   const [blocks, setBlocks] = useState(initial.blocks || createInitialBlocks());
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+  const [syncMode, setSyncMode] = useState("connecting");
+
+  const currentStateRef = useRef({
+    visibleTables: initial.visibleTables || 3,
+    blocks: initial.blocks || createInitialBlocks(),
+  });
+  const lastRemoteJsonRef = useRef("");
+  const cloudReadyRef = useRef(false);
+  const seedingRef = useRef(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ visibleTables, blocks }));
+    const state = { visibleTables, blocks };
+    currentStateRef.current = state;
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {}
+
+    if (!cloudReadyRef.current) return;
+
+    const json = JSON.stringify(state);
+    if (json === lastRemoteJsonRef.current) return;
+
+    setSyncMode(navigator.onLine ? "syncing" : "offline");
+
+    const timer = window.setTimeout(() => {
+      setDoc(CLOUD_DOC, state)
+        .then(() => {
+          lastRemoteJsonRef.current = json;
+          if (navigator.onLine) setSyncMode("live");
+        })
+        .catch(() => setSyncMode("offline"));
+    }, 120);
+
+    return () => window.clearTimeout(timer);
   }, [visibleTables, blocks]);
+
+  useEffect(() => {
+    setSyncMode("connecting");
+
+    const unsubscribe = onSnapshot(
+      CLOUD_DOC,
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          if (!seedingRef.current) {
+            seedingRef.current = true;
+            const localState = normalizeState(currentStateRef.current);
+            const localJson = JSON.stringify(localState);
+
+            setDoc(CLOUD_DOC, localState)
+              .then(() => {
+                lastRemoteJsonRef.current = localJson;
+                cloudReadyRef.current = true;
+                setSyncMode(navigator.onLine ? "live" : "offline");
+              })
+              .catch(() => {
+                seedingRef.current = false;
+                setSyncMode("offline");
+              });
+          }
+          return;
+        }
+
+        const cloudState = normalizeState(snapshot.data());
+        const cloudJson = JSON.stringify(cloudState);
+        const currentJson = JSON.stringify(normalizeState(currentStateRef.current));
+
+        lastRemoteJsonRef.current = cloudJson;
+        cloudReadyRef.current = true;
+
+        if (cloudJson !== currentJson) {
+          currentStateRef.current = cloudState;
+          setVisibleTables(cloudState.visibleTables);
+          setBlocks(cloudState.blocks);
+          try {
+            localStorage.setItem(STORAGE_KEY, cloudJson);
+          } catch {}
+        }
+
+        if (!navigator.onLine) {
+          setSyncMode("offline");
+        } else if (snapshot.metadata.hasPendingWrites) {
+          setSyncMode("syncing");
+        } else {
+          setSyncMode("live");
+        }
+      },
+      () => setSyncMode("offline")
+    );
+
+    const onOnline = () => setSyncMode("syncing");
+    const onOffline = () => setSyncMode("offline");
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const onFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -109,7 +231,6 @@ export default function App() {
       return;
     }
 
-    localStorage.removeItem(STORAGE_KEY);
     setBlocks((current) =>
       current.map((block) => ({
         ...block,
@@ -127,6 +248,8 @@ export default function App() {
       }
     } catch {}
   };
+
+  const [syncTitle, syncSubtitle] = syncText(syncMode);
 
   return (
     <div className="app-shell">
@@ -147,8 +270,8 @@ export default function App() {
             <div className="status-card">
               <span className="status-dot" />
               <span>
-                <strong>AUTO-SAVED</strong>
-                <small>on this device</small>
+                <strong>{syncTitle}</strong>
+                <small>{syncSubtitle}</small>
               </span>
             </div>
 
